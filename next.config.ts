@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* Foundation stage — no feature-specific config yet. */
+  output: "export",
+  basePath: "/verbly-ai",
+  images: {
+    unoptimized: true,
+  },
 };
 
 export default nextConfig;
