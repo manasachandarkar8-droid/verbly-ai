@@ -23,6 +23,11 @@ import type {
   GrammarAnalysis,
 } from "@/lib/analysis/types";
 
+import type {
+  GenerateSuggestions,
+  Suggestion,
+} from "@/lib/suggestions/types";
+
 type DashboardState = "idle" | "results";
 
 type ResultSectionId =
@@ -36,6 +41,7 @@ type ApiResponse = {
   text?: string;
   error?: string;
   data?: unknown;
+  suggestions?: unknown;
 };
 
 const EXAMPLE_SITES = [
@@ -370,6 +376,45 @@ export default function DashboardPage() {
         block: "start",
       });
   };
+
+  /*
+   * GENERATE AI SUGGESTIONS FOR EACH FINDING
+   *
+   * Sends the selected finding to the Gemini API.
+   * Gemini independently analyzes the finding
+   * and returns useful suggestions.
+   */
+  const handleGenerateSuggestions: GenerateSuggestions =
+    async (input) => {
+      const response = await fetch(
+        "/verbly-ai/api/finding-suggestions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(input),
+        },
+      );
+
+      const data = await readJsonResponse(
+        response,
+        "Finding Suggestions API",
+      );
+
+      if (
+        !response.ok ||
+        data.success !== true ||
+        !Array.isArray(data.suggestions)
+      ) {
+        throw new Error(
+          data.error ||
+            "Unable to generate AI suggestions.",
+        );
+      }
+
+      return data.suggestions as Suggestion[];
+    };
 
   /*
    * MAIN ANALYZE FUNCTION
@@ -738,6 +783,7 @@ export default function DashboardPage() {
                   result={result}
                   activeCategory={activeCategory}
                   onCategoryChange={setActiveCategory}
+                  onGenerateSuggestions={handleGenerateSuggestions}
                 />
 
                 <ConfusionHeatmap

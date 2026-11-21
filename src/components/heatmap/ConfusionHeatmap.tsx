@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Grid3x3 } from "lucide-react";
 import type { AnalysisResult } from "@/lib/analysis/types";
@@ -8,7 +8,7 @@ interface ConfusionHeatmapProps {
 }
 
 // What a future segment-level heatmap would surface, shown here only as a
-// description of the capability — not as fake data. No scores, excerpts, or
+// description of the capability ΓÇö not as fake data. No scores, excerpts, or
 // segment counts are implied.
 const PLANNED_CAPABILITIES = [
   "Segment-level scoring",
@@ -22,7 +22,7 @@ const PLANNED_CAPABILITIES = [
  * There is no backend capable of segment-level page analysis yet (see
  * src/lib/heatmap/types.ts), so this section only ever renders an honest
  * "not connected" state. It intentionally does not fetch, generate, or
- * fabricate any heatmap data — when a real backend exists, this component
+ * fabricate any heatmap data ΓÇö when a real backend exists, this component
  * gets a `heatmap?: ConfusionHeatmap` prop and a success state, not a
  * rewrite.
  */

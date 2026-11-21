@@ -1,8 +1,19 @@
+
 "use client";
 
-import { ArrowRight, BookOpen, FileText, SpellCheck2, Search, Target } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  FileText,
+  SpellCheck2,
+  Search,
+  Target,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { AnalysisCategoryId, AnalysisResult } from "@/lib/analysis/types";
+import type {
+  AnalysisCategoryId,
+  AnalysisResult,
+} from "@/lib/analysis/types";
 import { useCountUp } from "@/lib/use-count-up";
 import ScoreCard from "./ScoreCard";
 
@@ -23,7 +34,7 @@ const CATEGORY_LABEL: Record<AnalysisCategoryId, string> = {
   seo: "SEO",
   readability: "Readability",
   grammar: "Grammar",
-  "content-quality": "Content quality",
+  "content-quality": "Content Quality",
 };
 
 function ringColorClass(score: number): string {
@@ -40,11 +51,6 @@ function overallHeadline(score: number): string {
   return "This site needs meaningful improvement.";
 }
 
-// Same tier boundary used everywhere else on this page (ringColorClass,
-// overallHeadline): a score below 70 is "needs improvement" or worse. Only
-// that tier represents a genuinely meaningful gap worth calling out — a
-// score of, say, 83 is already in the "good" tier and shouldn't be flagged
-// as the site's biggest problem, even if it's the lowest of the four.
 const MEANINGFUL_OPPORTUNITY_THRESHOLD = 70;
 
 const RING_SIZE = 168;
@@ -52,20 +58,31 @@ const RING_STROKE = 10;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
 const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-export default function AnalysisOverview({ result, onCategorySelect }: AnalysisOverviewProps) {
-  const animatedOverall = useCountUp(result.overallScore, { durationMs: 1100 });
-  const dashOffset = RING_CIRCUMFERENCE * (1 - animatedOverall / 100);
+export default function AnalysisOverview({
+  result,
+  onCategorySelect,
+}: AnalysisOverviewProps) {
+  const animatedOverall = useCountUp(result.overallScore, {
+    durationMs: 1100,
+  });
 
-  // Identify the single lowest-scoring category to connect the overall score
-  // to a concrete next step, rather than leaving four cards of equal weight
-  // for the user to prioritize themselves.
-  const weakestCategory = result.categoryScores.reduce((weakest, current) =>
-    current.score < weakest.score ? current : weakest,
+  const dashOffset =
+    RING_CIRCUMFERENCE * (1 - animatedOverall / 100);
+
+  const weakestCategory = result.categoryScores.reduce(
+    (weakest, current) =>
+      current.score < weakest.score ? current : weakest,
   );
-  const hasClearFocusArea = weakestCategory.score < MEANINGFUL_OPPORTUNITY_THRESHOLD;
+
+  const hasClearFocusArea =
+    weakestCategory.score < MEANINGFUL_OPPORTUNITY_THRESHOLD;
 
   return (
-    <section id="analysis-overview" aria-labelledby="analysis-overview-heading" className="scroll-mt-8">
+    <section
+      id="analysis-overview"
+      aria-labelledby="analysis-overview-heading"
+      className="scroll-mt-8"
+    >
       <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl">
         <div className="flex flex-col items-center gap-8 p-6 sm:flex-row sm:items-center sm:gap-10 sm:p-8">
           {/* Overall score ring */}
@@ -87,12 +104,20 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
                 strokeWidth={RING_STROKE}
                 className="text-white/[0.06]"
               />
+
               <defs>
-                <linearGradient id="overallScoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <linearGradient
+                  id="overallScoreGradient"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="100%"
+                >
                   <stop offset="0%" stopColor="#7C5CFF" />
                   <stop offset="100%" stopColor="#67E8F9" />
                 </linearGradient>
               </defs>
+
               <circle
                 cx={RING_SIZE / 2}
                 cy={RING_SIZE / 2}
@@ -108,7 +133,9 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
             </svg>
 
             <div className="absolute flex flex-col items-center">
-              <span className={`text-4xl font-semibold tabular-nums tracking-tight ${ringColorClass(result.overallScore)}`}>
+              <span
+                className={`text-4xl font-semibold tabular-nums tracking-tight ${ringColorClass(result.overallScore)}`}
+              >
                 {animatedOverall}
               </span>
               <span className="mt-0.5 text-[11px] font-medium uppercase tracking-wider text-slate-400">
@@ -127,27 +154,35 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
             </h2>
 
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              Sample scores to preview the results experience — actual analysis isn&apos;t
-              connected yet.
+              Sample scores to preview the results experience — actual
+              analysis isn&apos;t connected yet.
             </p>
 
             {hasClearFocusArea ? (
               <button
                 type="button"
                 onClick={
-                  onCategorySelect ? () => onCategorySelect(weakestCategory.category) : undefined
+                  onCategorySelect
+                    ? () => onCategorySelect(weakestCategory.category)
+                    : undefined
                 }
                 disabled={!onCategorySelect}
                 className="group mt-4 inline-flex max-w-full items-center gap-2 whitespace-nowrap rounded-full border border-[#7C5CFF]/25 bg-[#7C5CFF]/[0.08] px-3.5 py-1.5 text-xs font-medium text-[#C4B5FD] transition-all duration-300 hover:border-[#7C5CFF]/45 hover:bg-[#7C5CFF]/[0.14] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#A78BFA] disabled:cursor-default disabled:hover:border-[#7C5CFF]/25 disabled:hover:bg-[#7C5CFF]/[0.08]"
               >
-                <Target className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {/* Shorter wording below the sm breakpoint keeps this pill on a
-                    single line at narrow phone widths (375–430px) instead of
-                    wrapping inside the rounded-full shape. */}
-                <span className="sm:hidden">Focus area: {CATEGORY_LABEL[weakestCategory.category]}</span>
-                <span className="hidden sm:inline">
-                  Biggest opportunity: {CATEGORY_LABEL[weakestCategory.category]}
+                <Target
+                  className="h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+
+                <span className="sm:hidden">
+                  Focus area: {CATEGORY_LABEL[weakestCategory.category]}
                 </span>
+
+                <span className="hidden sm:inline">
+                  Biggest opportunity:{" "}
+                  {CATEGORY_LABEL[weakestCategory.category]}
+                </span>
+
                 {onCategorySelect && (
                   <ArrowRight
                     className="h-3 w-3 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5"
@@ -157,11 +192,15 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
               </button>
             ) : (
               <div className="mt-4 inline-flex max-w-full items-center gap-2 whitespace-nowrap rounded-full border border-emerald-400/20 bg-emerald-400/[0.06] px-3.5 py-1.5 text-xs font-medium text-emerald-300">
-                <Target className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                {/* Same fix as the opportunity pill above: the full sentence
-                    doesn't fit on one line inside a rounded-full pill at
-                    375–430px, so a shorter version is used below sm. */}
-                <span className="sm:hidden">No major gaps found.</span>
+                <Target
+                  className="h-3.5 w-3.5 shrink-0"
+                  aria-hidden="true"
+                />
+
+                <span className="sm:hidden">
+                  No major gaps found.
+                </span>
+
                 <span className="hidden sm:inline">
                   No major gaps — every category is performing well.
                 </span>
@@ -170,8 +209,7 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
           </div>
         </div>
 
-        {/* Signature divider: the same violet → cyan gradient as the score ring,
-            visually tying the overall score to its category breakdown. */}
+        {/* Signature divider */}
         <div
           aria-hidden="true"
           className="h-px w-full bg-gradient-to-r from-transparent via-[#7C5CFF]/40 to-[#67E8F9]/40"
@@ -182,7 +220,8 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
           <h3 className="text-xs font-medium uppercase tracking-wider text-slate-400">
             Category breakdown
           </h3>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {result.categoryScores.map((categoryScore, index) => (
               <ScoreCard
                 key={categoryScore.category}
@@ -192,7 +231,9 @@ export default function AnalysisOverview({ result, onCategorySelect }: AnalysisO
                 summary={categoryScore.summary}
                 animationDelayMs={index * 90}
                 onSelect={
-                  onCategorySelect ? () => onCategorySelect(categoryScore.category) : undefined
+                  onCategorySelect
+                    ? () => onCategorySelect(categoryScore.category)
+                    : undefined
                 }
               />
             ))}
