@@ -198,13 +198,25 @@ Verbly AI is under active development, with a focus on modular architecture, rel
 
 ## Contributors
 
-- **Manasa Chandarkar**
-- **Mounika**
+Verbly AI is developed collaboratively by:
 
-## Acknowledgements
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/manasachandarkar8-droid">
+        <strong>Manasa Chandarkar</strong>
+      </a><br/>
+      Project Developer
+    </td>
+    <td align="center">
+      <a href="https://github.com/Mounika085B">
+        <strong>Mounika</strong>
+      </a><br/>
+      Project Developer
+    </td>
+  </tr>
+</table>
 
-We acknowledge the developers and communities behind the open-source frameworks, libraries, and AI technologies used in this project.
-
----
+We thank everyone who contributed their time, ideas, and efforts towards building Verbly AI.
 
 *Verbly AI — Making website content clearer, smarter, and more effective.*
