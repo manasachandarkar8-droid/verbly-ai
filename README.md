@@ -1,37 +1,210 @@
 ﻿# Verbly AI
 
-AI-powered website analysis platform that helps improve website content, readability, SEO, grammar, and overall quality.
+### AI-Powered Website Content Intelligence and Quality Analysis Platform
+
+Verbly AI is an AI-powered website analysis platform designed to evaluate and improve website content through automated quality assessment and intelligent recommendations.
+
+It helps users understand how effectively their websites communicate by analysing readability, SEO, grammar, content quality, and other important content characteristics.
+
+---
+
+## Overview
+
+Website content plays an important role in user engagement, accessibility, and search engine visibility. Identifying content quality issues manually can be time-consuming.
+
+Verbly AI simplifies this process by bringing multiple website content analysis capabilities together in one platform.
+
+Users can submit a website URL and receive structured insights into its content, along with AI-generated recommendations and improvements.
+
+## Key Features
+
+| Feature | Description |
+|---|---|
+| Website Scraping | Extracts website content for analysis. |
+| Readability Analysis | Evaluates how easy website content is to understand. |
+| SEO Analysis | Examines content-related SEO factors. |
+| Grammar Analysis | Identifies grammatical issues and provides corrections. |
+| AI Content Analysis | Evaluates topics, concepts, entities, intent and content quality. |
+| AI Rewrite | Generates improved versions of website content. |
+| AI Suggestions | Provides recommendations for improving website content. |
+| Confusion Heatmap | Visualises content clarity and potential areas of confusion. |
+| Location Intelligence | Planned capability for location-aware insights. |
+
+## Technology Stack
+
+### Frontend
+- Next.js
+- React
+- TypeScript
+- Tailwind CSS
+
+### Backend
+- Python 3.12
+- FastAPI
+- Pydantic
+- SQLAlchemy
+- PostgreSQL
+
+### AI Integration
+- Groq API — Primary AI provider
+- Cloudflare Workers AI — Backup AI provider
+
+### Additional Technologies
+- Redis
+- Alembic
+- Docker
+- Pytest
+
+## System Architecture
+
+Verbly AI consists of two primary components.
+
+**Frontend**
+- Provides the user interface.
+- Accepts website URLs.
+- Displays analysis results and recommendations.
+- Communicates with backend APIs.
+
+**Backend**
+- Extracts website content.
+- Performs deterministic content analysis.
+- Coordinates AI-powered analysis.
+- Processes rewrite and suggestion requests.
+- Returns structured results to the frontend.
 
 ## Repository Structure
 
-    verbly-ai/
-    ├── frontend/       # Next.js frontend
-    ├── backend/        # FastAPI backend
-    ├── .github/        # GitHub configuration
-    └── README.md
+```text
+verbly-ai/
+├── backend/
+│   ├── app/
+│   ├── tests/
+│   ├── pyproject.toml
+│   └── .env.example
+│
+├── frontend/
+│   ├── src/
+│   ├── public/
+│   └── package.json
+│
+├── .gitignore
+└── README.md
+```
 
-## Frontend
+## Getting Started
 
-Built with Next.js, React, TypeScript, and Tailwind CSS.
+### Prerequisites
 
-### Setup
+- Python 3.12
+- Node.js and npm
+- Git
 
-    cd frontend
-    npm install
-    npm run dev
+### 1. Clone the Repository
 
-### Production Build
+```bash
+git clone https://github.com/manasachandarkar8-droid/verbly-ai.git
+cd verbly-ai
+```
 
-    npm run build
+### 2. Backend Setup
 
-## Backend
+```bash
+cd backend
+python -m venv .venv
+```
 
-Built with Python and FastAPI.
+Activate the environment on Windows:
 
-Refer to backend/README.md for setup and execution instructions.
+```powershell
+.venv\Scripts\Activate.ps1
+```
+
+Install dependencies:
+
+```bash
+python -m pip install -e ".[dev]"
+```
+
+Create your environment file:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Configure the required environment variables in `.env`.
+
+Start the backend:
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Backend:
+
+`http://127.0.0.1:8000`
+
+API documentation:
+
+`http://127.0.0.1:8000/docs`
+
+### 3. Frontend Setup
+
+Open a separate terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open:
+
+`http://localhost:3000/verbly-ai`
+
+## AI Provider Strategy
+
+Verbly AI uses a primary and backup AI provider strategy for API-powered analysis.
+
+- **Primary:** Groq — `openai/gpt-oss-120b`
+- **Backup:** Cloudflare Workers AI — `@cf/google/gemma-4-26b-a4b-it`
+
+Provider credentials are configured through environment variables and must never be committed to the repository.
 
 ## Security
 
-- Never commit .env or .env.local files.
-- Never expose API keys or credentials.
-- Use environment variables for secrets.
+- API credentials are stored in environment variables.
+- Environment files containing secrets must not be committed.
+- Backend endpoints validate incoming requests.
+- Website extraction incorporates protections against unsafe requests.
+- Credentials must never be included in screenshots or source control.
+
+## Development and Testing
+
+Run backend tests from the backend directory:
+
+```bash
+pytest -q
+```
+
+Build the frontend:
+
+```bash
+npm run build
+```
+
+## Project Status
+
+Verbly AI is under active development, with a focus on modular architecture, reliable AI integration, content analysis, and user experience.
+
+## Contributors
+
+- **Manasa Chandarkar**
+- **Mounika**
+
+## Acknowledgements
+
+We acknowledge the developers and communities behind the open-source frameworks, libraries, and AI technologies used in this project.
+
+---
+
+*Verbly AI — Making website content clearer, smarter, and more effective.*
