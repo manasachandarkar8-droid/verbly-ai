@@ -1,0 +1,53 @@
+# Environment
+.env
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Alembic
+# (keep migration files tracked; ignore local sqlite artifacts if any)
+*.sqlite3
+
+
+# Downloaded local NLP models (not used by API-based Feature 5)
+/models/
+
+# Temporary archives and review packages
+*.zip
+
+# Backup files
+*.bak
+*.before_*
+*.backup.*
+
+# Local verification scripts
+verify_*_live.py
+
+# Logs
+*.log
+
+# Environment variants
+.env.*
+!.env.example
+
+# Backup files without an extension after .backup
+*.backup

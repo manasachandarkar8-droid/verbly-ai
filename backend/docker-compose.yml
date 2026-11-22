@@ -1,0 +1,30 @@
+# Minimum infrastructure needed for Feature 4 (grammar analysis):
+# the backend plus the self-hosted LanguageTool engine.
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      VERBLY_LANGUAGETOOL_BASE_URL: "http://languagetool:8010"
+    depends_on:
+      languagetool:
+        condition: service_healthy
+    env_file:
+      - .env
+
+  languagetool:
+    image: erikvl87/languagetool:6.8
+    ports:
+      - "8010:8010"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl -fsS http://localhost:8010/v2/languages || wget -qO- http://localhost:8010/v2/languages || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s

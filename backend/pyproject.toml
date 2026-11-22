@@ -1,0 +1,55 @@
+[project]
+name = "verbly-ai-backend"
+version = "0.1.0"
+description = "Backend foundation for Verbly AI"
+requires-python = ">=3.12,<3.13"
+readme = "README.md"
+
+dependencies = [
+    # Web framework
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.32,<1.0",
+
+    # Settings / environment configuration
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.6,<3.0",
+
+    # Database
+    "sqlalchemy>=2.0,<3.0",
+    "psycopg[binary]>=3.2,<4.0",
+    "alembic>=1.14,<2.0",
+    # Redis — Feature 6
+     "redis>=5.2,<7.0",
+    "trafilatura>=2.0,<3.0",
+    "respx>=0.21,<1.0",
+    "pytest-mock>=3.0,<4.0",
+     "trafilatura>=2.0,<3.0",
+    "httpx>=0.27,<1.0",
+    "respx>=0.21,<1.0",
+    "pytest-mock>=3.0,<4.0",
+
+    "spacy==3.8.16",
+    "sentence-transformers==6.1.0",
+    "keybert==0.9.0",
+    "transformers==5.19.0",
+    "torch==2.14.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3,<9.0",
+    
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+
