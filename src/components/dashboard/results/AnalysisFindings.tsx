@@ -26,7 +26,7 @@ import type {
   Suggestion,
 } from "@/lib/suggestions/types";
 import type { RewriteResult } from "@/lib/rewrite/types";
-
+import { generateRewrite } from "@/services/backend/rewriteService";
 interface AnalysisFindingsProps {
   result: AnalysisResult;
   activeCategory?: AnalysisCategoryId;
@@ -626,12 +626,13 @@ export default function AnalysisFindings({
         <RewriteModal
           finding={activeRewriteFinding}
           onClose={closeRewrite}
+          onGenerateRewrite={generateRewrite}
           initialCustomInstruction={rewriteInitialInstruction}
           initialResult={
             rewriteResults[activeRewriteFinding.id]
-          }
-          onRewriteComplete={handleRewriteComplete}
-        />
+        }
+        onRewriteComplete={handleRewriteComplete}
+      />
       )}
 
       <style jsx>{`

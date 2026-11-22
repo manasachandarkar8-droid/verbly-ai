@@ -474,6 +474,52 @@ function parseGrammarResponse(
   }
 }
 
+const GRAMMAR_CHUNK_SIZE = 9000;
+const MAX_GRAMMAR_INPUT = 60000;
+
+function splitGrammarText(
+  text: string,
+  maxLength: number,
+): Array<{ text: string; offset: number }> {
+  const chunks: Array<{ text: string; offset: number }> = [];
+  let start = 0;
+
+  while (start < text.length) {
+    let end = Math.min(start + maxLength, text.length);
+
+    if (end < text.length) {
+      const section = text.slice(start, end);
+
+      const boundaries = [
+        { index: section.lastIndexOf("\n\n"), width: 2 },
+        { index: section.lastIndexOf("\n"), width: 1 },
+        { index: section.lastIndexOf(". "), width: 2 },
+        { index: section.lastIndexOf("? "), width: 2 },
+        { index: section.lastIndexOf("! "), width: 2 },
+        { index: section.lastIndexOf("; "), width: 2 },
+        { index: section.lastIndexOf(" "), width: 1 },
+      ];
+
+      const boundary = boundaries
+        .filter((item) => item.index >= maxLength * 0.6)
+        .sort((a, b) => b.index - a.index)[0];
+
+      if (boundary) {
+        end = start + boundary.index + boundary.width;
+      }
+    }
+
+    chunks.push({
+      text: text.slice(start, end),
+      offset: start,
+    });
+
+    start = end;
+  }
+
+  return chunks;
+}
+
 export async function analyzeGrammarText(
   text: string,
 ): Promise<GrammarEngineResult> {
@@ -487,9 +533,9 @@ export async function analyzeGrammarText(
     };
   }
 
-  if (input.length > 12000) {
+  if (input.length > MAX_GRAMMAR_INPUT) {
     throw new Error(
-      "Grammar input is too long. Maximum allowed length is 12000 characters.",
+      `Grammar input exceeds the maximum of ${MAX_GRAMMAR_INPUT} characters.`,
     );
   }
 
@@ -501,40 +547,80 @@ export async function analyzeGrammarText(
     );
   }
 
-  const content = await getGrammarResponse(
-    input,
-    apiKey,
+  const chunks = splitGrammarText(input, GRAMMAR_CHUNK_SIZE);
+  const allFindings: GrammarEngineFinding[] = [];
+  const seenFindings = new Set<string>();
+
+  console.log(
+    `Grammar: analyzing ${input.length} characters in ${chunks.length} chunk(s).`,
   );
 
-  const parsed = parseGrammarResponse(content);
+  for (let index = 0; index < chunks.length; index++) {
+    const chunk = chunks[index];
 
-  const usedOffsets = new Set<number>();
+    console.log(
+      `Grammar: processing chunk ${index + 1}/${chunks.length}.`,
+    );
 
-  const findings = parsed.findings
-    .filter(
-      (item): item is AIGrammarFinding =>
-        typeof item === "object" &&
-        item !== null &&
-        typeof item.original === "string" &&
-        typeof item.correction === "string" &&
-        typeof item.explanation === "string" &&
-        typeof item.category === "string" &&
-        typeof item.severity === "string",
-    )
-    .map((item) =>
-      validateFinding(item, input, usedOffsets),
-    )
-    .filter(
-      (
-        finding,
-      ): finding is GrammarEngineFinding =>
-        finding !== null,
-    )
-    .sort((a, b) => a.start - b.start);
+    const content = await getGrammarResponse(
+      chunk.text,
+      apiKey,
+    );
+
+    const parsed = parseGrammarResponse(content);
+    const usedOffsets = new Set<number>();
+
+    const findings = parsed.findings
+      .filter(
+        (item): item is AIGrammarFinding =>
+          typeof item === "object" &&
+          item !== null &&
+          typeof item.original === "string" &&
+          typeof item.correction === "string" &&
+          typeof item.explanation === "string" &&
+          typeof item.category === "string" &&
+          typeof item.severity === "string",
+      )
+      .map((item) =>
+        validateFinding(item, chunk.text, usedOffsets),
+      )
+      .filter(
+        (
+          finding,
+        ): finding is GrammarEngineFinding =>
+          finding !== null,
+      );
+
+    for (const finding of findings) {
+      const globalStart = finding.start + chunk.offset;
+      const globalEnd = finding.end + chunk.offset;
+
+      const deduplicationKey =
+        `${globalStart}:${globalEnd}:${finding.original}`;
+
+      if (seenFindings.has(deduplicationKey)) {
+        continue;
+      }
+
+      seenFindings.add(deduplicationKey);
+
+      allFindings.push({
+        ...finding,
+        start: globalStart,
+        end: globalEnd,
+      });
+    }
+  }
+
+  allFindings.sort((a, b) => a.start - b.start);
+
+  console.log(
+    `Grammar: completed ${chunks.length} chunk(s), found ${allFindings.length} issue(s).`,
+  );
 
   return {
     text_length: input.length,
-    finding_count: findings.length,
-    findings,
+    finding_count: allFindings.length,
+    findings: allFindings,
   };
 }

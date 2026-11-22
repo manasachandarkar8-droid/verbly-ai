@@ -31,13 +31,13 @@ export async function POST(request: Request) {
       );
     }
 
-    if (text.length > 12000) {
+    if (text.length > 60000) {
       return NextResponse.json(
         {
           success: false,
-          error: "Text cannot exceed 12,000 characters.",
+          error: "Text cannot exceed 60,000 characters.",
         },
-        { status: 400 },
+      { status: 400 },
       );
     }
 
