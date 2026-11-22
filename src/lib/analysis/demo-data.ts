@@ -1,3 +1,4 @@
+
 import type {
   AnalysisCategoryId,
   AnalysisCategoryMeta,
@@ -24,8 +25,9 @@ export const ANALYSIS_CATEGORIES: AnalysisCategoryMeta[] = [
   },
   {
     id: "content-quality",
-    label: "Content quality",
-    description: "Clarity, specificity, usefulness, and overall messaging.",
+    label: "Content Quality",
+    description:
+      "How clearly, effectively, and meaningfully the website communicates its value.",
   },
 ];
 
@@ -77,7 +79,10 @@ function tierForScore(score: number): ScoreTier {
   return "poor";
 }
 
-const CATEGORY_SUMMARIES: Record<AnalysisCategoryId, Record<ScoreTier, string>> = {
+const CATEGORY_SUMMARIES: Record<
+  AnalysisCategoryId,
+  Record<ScoreTier, string>
+> = {
   seo: {
     strong: "Strong search structure with metadata and headings well in place.",
     good: "Solid search fundamentals, with a few opportunities to improve metadata.",
@@ -97,10 +102,10 @@ const CATEGORY_SUMMARIES: Record<AnalysisCategoryId, Record<ScoreTier, string>> 
     poor: "Frequent grammar issues undermine the writing's credibility.",
   },
   "content-quality": {
-    strong: "The message is clear, specific, and compelling.",
-    good: "The message is clear but could be more specific and compelling.",
-    needsWork: "Messaging feels vague and would benefit from more specific claims.",
-    poor: "Content lacks a clear value proposition or specific substance.",
+    strong: "Content communicates its value clearly and gives visitors meaningful information.",
+    good: "Content is useful overall, with a few opportunities to communicate value more clearly.",
+    needsWork: "Some content lacks clarity, repeats information, or does not explain its outcomes.",
+    poor: "Content does not communicate its value or outcomes effectively.",
   },
 };
 
@@ -115,11 +120,7 @@ interface FindingTemplate {
   /** Severity to use when shown — may vary by how bad the tier is. */
   severityByTier: Partial<Record<ScoreTier, FindingSeverity>>;
   /**
-   * Optional excerpt of sample page content this finding refers to. Only set
-   * on findings that point at actual rewritable text — structural findings
-   * (missing metadata, heading hierarchy, broken page structure) and purely
-   * positive findings intentionally leave this unset, since there's no
-   * original text for those to rewrite.
+   * Optional excerpt of sample page content this finding refers to.
    */
   sourceExcerpt?: string;
 }
@@ -135,8 +136,6 @@ const FINDING_TEMPLATES: FindingTemplate[] = [
       "Add a concise description that clearly explains the page's primary value.",
     tiers: ["good", "needsWork", "poor"],
     severityByTier: { good: "info", needsWork: "warning", poor: "warning" },
-    // No sourceExcerpt: there's no existing description text to rewrite —
-    // one needs to be written from scratch, which isn't a rewrite action.
   },
   {
     id: "seo-heading-hierarchy",
@@ -148,7 +147,6 @@ const FINDING_TEMPLATES: FindingTemplate[] = [
       "Use headings in a logical hierarchy so each section has a clear relationship to the content around it.",
     tiers: ["strong", "good", "needsWork"],
     severityByTier: { strong: "positive", good: "info", needsWork: "warning" },
-    // No sourceExcerpt: structural issue, not rewritable body text.
   },
   {
     id: "seo-broken-structure",
@@ -160,7 +158,6 @@ const FINDING_TEMPLATES: FindingTemplate[] = [
       "Rebuild the page around a single clear heading hierarchy with one primary heading per page.",
     tiers: ["poor"],
     severityByTier: { poor: "critical" },
-    // No sourceExcerpt: structural issue, not rewritable body text.
   },
   {
     id: "readability-long-sentence",
@@ -234,44 +231,58 @@ const FINDING_TEMPLATES: FindingTemplate[] = [
     recommendedFix: "Keep the current level of writing consistency as the content evolves.",
     tiers: ["strong"],
     severityByTier: { strong: "positive" },
-    // No sourceExcerpt: positive finding, nothing to rewrite.
+  },
+
+  // Content Quality findings
+  {
+    id: "content-quality-vague-value",
+    category: "content-quality",
+    title: "Website value proposition is unclear",
+    explanation:
+      "Visitors may struggle to understand what the business or product offers and why it matters to them.",
+    recommendedFix:
+      "Explain what you offer, who it is for, and the main problem it solves using specific and direct language.",
+    tiers: ["needsWork", "poor"],
+    severityByTier: { needsWork: "warning", poor: "critical" },
+    sourceExcerpt:
+      "We are passionate about creating innovative solutions that help businesses achieve more.",
   },
   {
-    id: "quality-vague-value",
+    id: "content-quality-repetition",
     category: "content-quality",
-    title: "Value proposition could be more specific",
+    title: "Content contains repetitive information",
     explanation:
-      "Broad claims are less persuasive when they do not clearly communicate the outcome users can expect.",
-    recommendedFix: "Replace vague claims with specific benefits, outcomes, or evidence.",
+      "Repeating similar claims or descriptions across sections can make the page feel less useful and harder to navigate.",
+    recommendedFix:
+      "Remove repeated statements and use each section to communicate a distinct benefit, feature, or piece of information.",
     tiers: ["good", "needsWork", "poor"],
     severityByTier: { good: "info", needsWork: "warning", poor: "warning" },
     sourceExcerpt:
-      "We help businesses grow by making things better and more efficient, so you can achieve more with less effort and see real results.",
+      "Our platform helps businesses grow. We help businesses improve and grow with our platform.",
   },
   {
-    id: "quality-repetition",
+    id: "content-quality-no-clear-outcome",
     category: "content-quality",
-    title: "Some phrasing could be more varied",
+    title: "Clear user outcomes are missing",
     explanation:
-      "Repeated wording across nearby sections can make the content feel less natural.",
-    recommendedFix: "Vary repeated phrases while keeping the underlying message consistent.",
-    tiers: ["strong", "good", "needsWork"],
-    severityByTier: { strong: "positive", good: "info", needsWork: "warning" },
-    sourceExcerpt:
-      "Our tool makes writing easier. Writing becomes easier with our tool. With our tool, the process of writing is made easier for everyone on your team.",
-  },
-  {
-    id: "quality-no-clear-outcome",
-    category: "content-quality",
-    title: "No clear outcome for the reader",
-    explanation:
-      "Without a specific, concrete outcome, readers may struggle to see why the content is relevant to them.",
+      "The content describes the offering but does not clearly explain what visitors will gain or be able to achieve.",
     recommendedFix:
-      "Lead each section with the concrete outcome or benefit the reader should take away.",
-    tiers: ["poor"],
-    severityByTier: { poor: "critical" },
+      "Describe concrete user outcomes, such as time saved, tasks completed, problems solved, or results users can expect.",
+    tiers: ["needsWork", "poor"],
+    severityByTier: { needsWork: "warning", poor: "critical" },
     sourceExcerpt:
-      "Our platform offers a wide range of powerful features designed to support your content needs across every stage of the process.",
+      "Our solution provides a range of powerful features designed for modern businesses.",
+  },
+  {
+    id: "content-quality-strong",
+    category: "content-quality",
+    title: "Content communicates its value clearly",
+    explanation:
+      "The content explains its offering and gives visitors a clear understanding of its benefits.",
+    recommendedFix:
+      "Keep the messaging specific and focused as new content is added.",
+    tiers: ["strong"],
+    severityByTier: { strong: "positive" },
   },
 ];
 
@@ -280,14 +291,15 @@ const CATEGORY_BASELINES: Record<AnalysisCategoryId, number> = {
   seo: 82,
   readability: 78,
   grammar: 86,
-  "content-quality": 76,
+  "content-quality": 75,
 };
 
+/** The weights add up to 1.00 across all four categories. */
 const CATEGORY_WEIGHTS: Record<AnalysisCategoryId, number> = {
-  seo: 0.28,
-  readability: 0.24,
-  grammar: 0.22,
-  "content-quality": 0.26,
+  seo: 0.3,
+  readability: 0.25,
+  grammar: 0.2,
+  "content-quality": 0.25,
 };
 
 function clampScore(score: number): number {
@@ -313,13 +325,18 @@ export function buildDemoAnalysisResult(url: string): AnalysisResult {
   });
 
   const overallScoreRaw = categoryScores.reduce(
-    (total, { category, score }) => total + score * CATEGORY_WEIGHTS[category],
+    (total, { category, score }) =>
+      total + score * CATEGORY_WEIGHTS[category],
     0,
   );
+
   const overallScore = clampScore(overallScoreRaw);
 
   const tierByCategory = new Map(
-    categoryScores.map(({ category, score }) => [category, tierForScore(score)]),
+    categoryScores.map(({ category, score }) => [
+      category,
+      tierForScore(score),
+    ]),
   );
 
   const findings: Finding[] = FINDING_TEMPLATES.filter((template) =>

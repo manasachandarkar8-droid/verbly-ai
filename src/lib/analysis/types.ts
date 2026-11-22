@@ -1,3 +1,4 @@
+
 /**
  * Shared types for website analysis.
  *
@@ -111,35 +112,58 @@ export interface GrammarAnalysis {
 
 export interface AnalysisResult {
   /**
-   * Existing demo analysis flag.
-   *
-   * The existing SEO/readability/content-quality result still uses
-   * the current demo analysis until those backends are connected.
+   * True when using demo data.
+   * False when using real backend analysis.
    */
-  isDemo: true;
+  isDemo: boolean;
 
   url: string;
 
   generatedAt: string;
 
-  overallScore: number;
+  /**
+   * Existing dashboard scores.
+   * Optional because real API analysis may not provide them.
+   */
+  overallScore?: number;
 
-  categoryScores: CategoryScore[];
+  categoryScores?: CategoryScore[];
 
   findings: Finding[];
 
   /**
    * Existing Location Intelligence data.
-   *
-   * Do not remove this.
    */
   location?: LocationIntelligence;
 
   /**
    * Real LanguageTool grammar result.
-   *
-   * This is populated separately from the existing demo
-   * category scores.
    */
   grammar?: GrammarAnalysis;
+
+  /**
+   * Real website extraction result.
+   */
+  extraction?: {
+  title: string | null;
+  description: string | null;
+  main_text: string;
+  word_count: number;
+  character_count: number;
+};
+
+  /**
+   * Real SEO analysis.
+   */
+  seo?: unknown;
+
+  /**
+   * Real readability analysis.
+   */
+  readability?: unknown;
+
+  /**
+   * Real AI content analysis.
+   */
+  contentAnalysis?: unknown;
 }

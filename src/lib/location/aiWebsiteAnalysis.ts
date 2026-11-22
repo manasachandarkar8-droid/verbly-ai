@@ -1,3 +1,4 @@
+
 /*
  * Dynamic AI Website Analysis
  *
@@ -20,13 +21,9 @@ export type WebsiteLocationStatus =
 
 export interface AIWebsiteAnalysis {
   websiteType: string;
-
   locationStatus: WebsiteLocationStatus;
-
   reason: string;
-
   suggestedWebsiteTypes: string[];
-
   confidence: "High" | "Medium" | "Low";
 }
 
@@ -49,107 +46,75 @@ interface GeminiResponse {
   }>;
 }
 
-/*
- * Gemini model.
- *
- * Keep this configurable through the environment so
- * the model name does not need to be changed in code.
- */
 const GEMINI_MODEL =
-  process.env.GEMINI_MODEL ||
-  "gemini-3.8-flash";
+  process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
-/*
- * API key must stay on the server.
- */
 const GEMINI_API_KEY =
   process.env.GEMINI_API_KEY ||
   process.env.GOOGLE_API_KEY;
 
+// Retry configuration
+const MAX_RETRIES = 2;
+const INITIAL_RETRY_DELAY = 1000;
+const REQUEST_TIMEOUT = 30000;
+
+const RETRYABLE_STATUS_CODES = [
+  408,
+  429,
+  500,
+  502,
+  503,
+  504,
+];
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /*
  * Remove HTML when raw HTML is supplied.
  */
-function stripHtml(
-  value: string
-): string {
+function stripHtml(value: string): string {
   return value
-    .replace(
-      /<script[\s\S]*?<\/script>/gi,
-      " "
-    )
-    .replace(
-      /<style[\s\S]*?<\/style>/gi,
-      " "
-    )
-    .replace(
-      /<noscript[\s\S]*?<\/noscript>/gi,
-      " "
-    )
-    .replace(
-      /<[^>]+>/g,
-      " "
-    )
-    .replace(
-      /&nbsp;/gi,
-      " "
-    )
-    .replace(
-      /&amp;/gi,
-      "&"
-    )
-    .replace(
-      /&quot;/gi,
-      '"'
-    )
-    .replace(
-      /\s+/g,
-      " "
-    )
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/\s+/g, " ")
     .trim();
 }
 
 /*
  * Clean one page.
  */
-function cleanPage(
-  page: WebsitePage
-): string {
+function cleanPage(page: WebsitePage): string {
   const pieces: string[] = [];
 
   if (page.url) {
-    pieces.push(
-      `URL: ${page.url}`
-    );
+    pieces.push(`URL: ${page.url}`);
   }
 
   if (page.title) {
-    pieces.push(
-      `TITLE: ${page.title}`
-    );
+    pieces.push(`TITLE: ${page.title}`);
   }
 
   if (page.description) {
-    pieces.push(
-      `DESCRIPTION: ${page.description}`
-    );
+    pieces.push(`DESCRIPTION: ${page.description}`);
   }
 
   if (page.content) {
-    pieces.push(
-      `CONTENT: ${page.content}`
-    );
+    pieces.push(`CONTENT: ${page.content}`);
   }
 
   if (page.text) {
-    pieces.push(
-      `TEXT: ${page.text}`
-    );
+    pieces.push(`TEXT: ${page.text}`);
   }
 
   if (page.html) {
-    pieces.push(
-      `HTML: ${stripHtml(page.html)}`
-    );
+    pieces.push(`HTML: ${stripHtml(page.html)}`);
   }
 
   return pieces.join("\n");
@@ -157,9 +122,6 @@ function cleanPage(
 
 /*
  * Prepare website content for the AI.
- *
- * We limit the amount of text so that a website with
- * many pages does not create an unnecessarily huge request.
  */
 function prepareWebsiteContent(
   pages: WebsitePage[]
@@ -169,21 +131,15 @@ function prepareWebsiteContent(
 
   const chunks: string[] = [];
 
-  for (
-    const page of pages
-  ) {
-    const cleaned =
-      cleanPage(page);
+  for (const page of pages) {
+    const cleaned = cleanPage(page);
 
     if (!cleaned) {
       continue;
     }
 
     chunks.push(
-      cleaned.slice(
-        0,
-        MAX_PAGE_CHARS
-      )
+      cleaned.slice(0, MAX_PAGE_CHARS)
     );
   }
 
@@ -191,50 +147,25 @@ function prepareWebsiteContent(
     .join(
       "\n\n---------------- PAGE ----------------\n\n"
     )
-    .slice(
-      0,
-      MAX_TOTAL_CHARS
-    );
+    .slice(0, MAX_TOTAL_CHARS);
 }
 
 /*
  * Extract JSON from Gemini response.
- *
- * Gemini can sometimes wrap JSON inside markdown.
  */
-function extractJson(
-  text: string
-): unknown {
-  const cleaned =
-    text
-      .trim()
-      .replace(
-        /^```json\s*/i,
-        ""
-      )
-      .replace(
-        /^```\s*/i,
-        ""
-      )
-      .replace(
-        /\s*```$/i,
-        ""
-      )
-      .trim();
+function extractJson(text: string): unknown {
+  const cleaned = text
+    .trim()
+    .replace(/^```json\s*/i, "")
+    .replace(/^```\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
 
   try {
-    return JSON.parse(
-      cleaned
-    );
+    return JSON.parse(cleaned);
   } catch {
-    /*
-     * Try to find the first JSON object.
-     */
-    const start =
-      cleaned.indexOf("{");
-
-    const end =
-      cleaned.lastIndexOf("}");
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
 
     if (
       start === -1 ||
@@ -247,18 +178,13 @@ function extractJson(
     }
 
     return JSON.parse(
-      cleaned.slice(
-        start,
-        end + 1
-      )
+      cleaned.slice(start, end + 1)
     );
   }
 }
 
 /*
  * Validate AI output.
- *
- * We do not blindly trust model output.
  */
 function validateAnalysis(
   value: unknown
@@ -267,16 +193,11 @@ function validateAnalysis(
     !value ||
     typeof value !== "object"
   ) {
-    throw new Error(
-      "Invalid AI analysis."
-    );
+    throw new Error("Invalid AI analysis.");
   }
 
   const data =
-    value as Record<
-      string,
-      unknown
-    >;
+    value as Record<string, unknown>;
 
   const websiteType =
     typeof data.websiteType === "string"
@@ -289,40 +210,30 @@ function validateAnalysis(
       : "";
 
   const suggestedWebsiteTypes =
-    Array.isArray(
-      data.suggestedWebsiteTypes
-    )
+    Array.isArray(data.suggestedWebsiteTypes)
       ? data.suggestedWebsiteTypes
           .filter(
-            (
-              item
-            ): item is string =>
+            (item): item is string =>
               typeof item === "string"
           )
-          .map(
-            (item) =>
-              item.trim()
-          )
+          .map((item) => item.trim())
           .filter(Boolean)
           .slice(0, 8)
       : [];
 
-  const validStatuses: WebsiteLocationStatus[] =
-    [
-      "single_location",
-      "multiple_locations",
-      "platform_or_multiple_businesses",
-      "online_or_no_physical_location",
-      "insufficient_evidence",
-    ];
+  const validStatuses: WebsiteLocationStatus[] = [
+    "single_location",
+    "multiple_locations",
+    "platform_or_multiple_businesses",
+    "online_or_no_physical_location",
+    "insufficient_evidence",
+  ];
 
   const locationStatus =
     validStatuses.includes(
       data.locationStatus as WebsiteLocationStatus
     )
-      ? (
-          data.locationStatus as WebsiteLocationStatus
-        )
+      ? (data.locationStatus as WebsiteLocationStatus)
       : "insufficient_evidence";
 
   const confidence =
@@ -332,10 +243,7 @@ function validateAnalysis(
       ? data.confidence
       : "Low";
 
-  if (
-    !websiteType ||
-    !reason
-  ) {
+  if (!websiteType || !reason) {
     throw new Error(
       "AI analysis is incomplete."
     );
@@ -353,9 +261,8 @@ function validateAnalysis(
 /*
  * Build the AI instruction.
  *
- * Notice:
- * There are no company names here.
- * There are no predefined categories here.
+ * No company names.
+ * No predefined website categories.
  */
 function buildPrompt(
   websiteContent: string
@@ -431,21 +338,126 @@ ${websiteContent}
 }
 
 /*
+ * Gemini request with automatic retry.
+ *
+ * Handles temporary API errors and network failures.
+ */
+async function fetchGeminiWithRetry(
+  endpoint: string,
+  requestBody: string
+): Promise<Response> {
+  for (
+    let attempt = 0;
+    attempt <= MAX_RETRIES;
+    attempt++
+  ) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+
+        body: requestBody,
+
+        cache: "no-store",
+
+        signal: AbortSignal.timeout(
+          REQUEST_TIMEOUT
+        ),
+      });
+
+      if (response.ok) {
+        return response;
+      }
+
+      const errorText = await response.text();
+
+      const retryable =
+        RETRYABLE_STATUS_CODES.includes(
+          response.status
+        );
+
+      if (
+        !retryable ||
+        attempt === MAX_RETRIES
+      ) {
+        console.error("Gemini API error:", {
+          status: response.status,
+          error: errorText,
+        });
+
+        throw new Error(
+          `Gemini API failed: ${response.status} ${errorText}`
+        );
+      }
+
+      const retryDelay =
+        INITIAL_RETRY_DELAY *
+        Math.pow(2, attempt);
+
+      console.warn(
+        `Gemini returned ${response.status}. ` +
+        `Retrying in ${retryDelay}ms. ` +
+        `Attempt ${attempt + 1}/${MAX_RETRIES}.`
+      );
+
+      await delay(retryDelay);
+
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message.startsWith("Gemini API failed:")
+      ) {
+        throw error;
+      }
+
+      if (attempt === MAX_RETRIES) {
+        console.error(
+          "Gemini network error:",
+          error
+        );
+
+        throw new Error(
+          "Gemini service is unavailable after multiple attempts."
+        );
+      }
+
+      const retryDelay =
+        INITIAL_RETRY_DELAY *
+        Math.pow(2, attempt);
+
+      console.warn(
+        `Gemini connection failed. ` +
+        `Retrying in ${retryDelay}ms. ` +
+        `Attempt ${attempt + 1}/${MAX_RETRIES}.`
+      );
+
+      await delay(retryDelay);
+    }
+  }
+
+  throw new Error(
+    "Gemini request failed after multiple attempts."
+  );
+}
+
+/*
  * Main function.
  */
 export async function analyzeWebsiteWithAI(
   pages: WebsitePage[]
 ): Promise<AIWebsiteAnalysis> {
+
   if (
     !Array.isArray(pages) ||
     pages.length === 0
   ) {
     return {
-      websiteType:
-        "Unknown website type",
+      websiteType: "Unknown website type",
 
-      locationStatus:
-        "insufficient_evidence",
+      locationStatus: "insufficient_evidence",
 
       reason:
         "There was not enough website content available to determine the type of website or its physical-location situation.",
@@ -462,11 +474,9 @@ export async function analyzeWebsiteWithAI(
     );
 
     return {
-      websiteType:
-        "Unknown website type",
+      websiteType: "Unknown website type",
 
-      locationStatus:
-        "insufficient_evidence",
+      locationStatus: "insufficient_evidence",
 
       reason:
         "AI website analysis is unavailable because the Gemini API key is not configured.",
@@ -478,17 +488,13 @@ export async function analyzeWebsiteWithAI(
   }
 
   const websiteContent =
-    prepareWebsiteContent(
-      pages
-    );
+    prepareWebsiteContent(pages);
 
   if (!websiteContent) {
     return {
-      websiteType:
-        "Unknown website type",
+      websiteType: "Unknown website type",
 
-      locationStatus:
-        "insufficient_evidence",
+      locationStatus: "insufficient_evidence",
 
       reason:
         "The analyzed pages did not contain enough readable content to determine the website type.",
@@ -499,65 +505,40 @@ export async function analyzeWebsiteWithAI(
     };
   }
 
-  const prompt =
-    buildPrompt(
-      websiteContent
-    );
+  const prompt = buildPrompt(websiteContent);
 
   const endpoint =
     `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
 
   try {
-    const response =
-      await fetch(
-        endpoint,
+    const requestBody = JSON.stringify({
+      contents: [
         {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: prompt,
-                  },
-                ],
-              },
-            ],
-
-            generationConfig: {
-              temperature: 0.1,
-              responseMimeType:
-                "application/json",
+          parts: [
+            {
+              text: prompt,
             },
-          }),
+          ],
+        },
+      ],
 
-          cache: "no-store",
-        }
-      );
+      generationConfig: {
+        temperature: 0.1,
 
-    if (!response.ok) {
-      const errorText =
-        await response.text();
+        responseMimeType: "application/json",
+      },
+    });
 
-      throw new Error(
-        `Gemini API failed: ${response.status} ${errorText}`
-      );
-    }
+    const response = await fetchGeminiWithRetry(
+      endpoint,
+      requestBody
+    );
 
     const data =
       (await response.json()) as GeminiResponse;
 
     const text =
-      data
-        .candidates?.[0]
-        ?.content?.parts?.[0]
-        ?.text;
+      data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!text) {
       throw new Error(
@@ -565,12 +546,10 @@ export async function analyzeWebsiteWithAI(
       );
     }
 
-    const parsed =
-      extractJson(text);
+    const parsed = extractJson(text);
 
-    return validateAnalysis(
-      parsed
-    );
+    return validateAnalysis(parsed);
+
   } catch (error) {
     console.error(
       "AI website analysis failed:",
@@ -582,11 +561,9 @@ export async function analyzeWebsiteWithAI(
      * if AI analysis fails.
      */
     return {
-      websiteType:
-        "Unknown website type",
+      websiteType: "Unknown website type",
 
-      locationStatus:
-        "insufficient_evidence",
+      locationStatus: "insufficient_evidence",
 
       reason:
         "The website content could not be analyzed by the AI service. No conclusion about the website type or physical location was made.",

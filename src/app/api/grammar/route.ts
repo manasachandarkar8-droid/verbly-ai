@@ -1,5 +1,9 @@
+
 import { NextResponse } from "next/server";
-import { analyzeGrammar } from "@/services/grammarService";
+import { analyzeGrammarText } from "@/services/grammarEngine";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
@@ -27,21 +31,45 @@ export async function POST(request: Request) {
       );
     }
 
-    if (text.length > 20000) {
+    if (text.length > 12000) {
       return NextResponse.json(
         {
           success: false,
-          error: "Text cannot exceed 20,000 characters.",
+          error: "Text cannot exceed 12,000 characters.",
         },
         { status: 400 },
       );
     }
 
-    const result = await analyzeGrammar(text);
+    const result = await analyzeGrammarText(text);
+
+    const findings = result.findings.map((finding) => {
+      const category = finding.category;
+
+      return {
+        message: `${finding.original} → ${finding.correction}. ${finding.explanation}`,
+        short_message: finding.correction,
+        category,
+        rule_id: `AI_${category.toUpperCase()}`,
+        issue_type: category,
+        severity: finding.severity,
+        offset: finding.start,
+        length: finding.end - finding.start,
+        context: finding.original,
+        replacements: [finding.correction],
+      };
+    });
+
+    const data = {
+      text_length: result.text_length,
+      finding_count: findings.length,
+      findings,
+      issues: findings,
+    };
 
     return NextResponse.json({
       success: true,
-      data: result,
+      data,
     });
   } catch (error) {
     console.error("Grammar API error:", error);

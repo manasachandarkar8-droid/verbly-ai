@@ -12,10 +12,8 @@ import AnalysisFindings from "@/components/dashboard/results/AnalysisFindings";
 import ConfusionHeatmap from "@/components/heatmap/ConfusionHeatmap";
 import LocationIntelligence from "@/components/location/LocationIntelligence";
 
-import {
-  ANALYSIS_CATEGORIES,
-  buildDemoAnalysisResult,
-} from "@/lib/analysis/demo-data";
+import { ANALYSIS_CATEGORIES } from "@/lib/analysis/categories";
+import { mapAnalysisFindings } from "@/lib/analysis/findings-mapper";
 
 import type {
   AnalysisCategoryId,
@@ -27,6 +25,26 @@ import {
   extractWebsite,
   type ExtractionResponse,
 } from "@/services/backend/extractionService";
+
+import {
+  analyzeReadability,
+  type ReadabilityResponse,
+} from "@/services/backend/readabilityService";
+
+import {
+  analyzeSeo,
+  type SeoResponse,
+} from "@/services/backend/seoService";
+
+import {
+  analyzeContent,
+  type ContentAnalysisResponse,
+} from "@/services/backend/contentAnalysisService";
+
+import type {
+  GenerateSuggestions,
+  Suggestion,
+} from "@/lib/suggestions/types";
 
 type DashboardState = "idle" | "results";
 
@@ -41,6 +59,7 @@ type ApiResponse = {
   text?: string;
   error?: string;
   data?: unknown;
+  suggestions?: unknown;
 };
 
 const EXAMPLE_SITES = [
@@ -253,12 +272,8 @@ export default function DashboardPage() {
     useState<DashboardState>("idle");
 
   const [result, setResult] =
-    useState<AnalysisResult | null>(null);
-
-  const [extractedContent, setExtractedContent] =
-    useState<ExtractionResponse | null>(null);  
-
-  /*
+  useState<AnalysisResult | null>(null);
+/*
    * URL used by the main Website Analyzer.
    * This same URL is passed to LocationIntelligence.
    */
@@ -380,123 +395,256 @@ export default function DashboardPage() {
   };
 
   /*
+ * GENERATE AI SUGGESTIONS FOR EACH FINDING
+ */
+const handleGenerateSuggestions: GenerateSuggestions =
+  async (input) => {
+    const response = await fetch(
+      "/verbly-ai/api/finding-suggestions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(input),
+      },
+    );
+
+    const data = await readJsonResponse(
+      response,
+      "Finding Suggestions API",
+    );
+
+    if (
+      !response.ok ||
+      data.success !== true ||
+      !Array.isArray(data.suggestions)
+    ) {
+      throw new Error(
+        data.error ||
+          "Unable to generate AI suggestions.",
+      );
+    }
+
+    return data.suggestions as Suggestion[];
+  };
+
+  /*
    * MAIN ANALYZE FUNCTION
    */
-  const handleAnalyze = async (
-    url: string,
-  ) => {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
+  const handleAnalyze = async (url: string) => {
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  if (!session) {
+    setLoginMessage("Please login to analyze a website.");
+    return;
+  }
+
+  setAnalyzedUrl(url);
+  setLoginMessage(null);
+  setGrammarError(null);
+  setIsAnalyzing(true);
+
+
+  setResult(null);
+
+  try {
+    /*
+     * STEP 1: Run independent analyses.
+     *
+     * Extraction, SEO and Grammar do not depend
+     * on one another.
+     */
+
+    const [extractionOutcome, seoOutcome, grammarOutcome] =
+      await Promise.allSettled([
+        extractWebsite(url),
+        analyzeSeo(url),
+        getGrammarAnalysis(url),
+      ]);
 
     /*
-     * Not logged in.
+     * STEP 2: Process extraction.
      */
-    if (!session) {
-      setLoginMessage(
-        "Please login to analyze a website.",
-      );
 
-      return;
+    let extractionResult: ExtractionResponse | null = null;
+
+    if (extractionOutcome.status === "fulfilled") {
+      extractionResult = extractionOutcome.value;
+
+      if (!extractionResult.main_text.trim()) {
+        extractionResult = null;
+      } else {
+
+        console.log("Website extraction successful:", {
+          title: extractionResult.title,
+          wordCount: extractionResult.word_count,
+        });
+      }
+    } else {
+      console.error(
+        "Website extraction failed:",
+        extractionOutcome.reason,
+      );
     }
 
     /*
-     * Save the exact URL entered.
+     * STEP 3: Process SEO.
      */
-    setAnalyzedUrl(url);
 
-    setLoginMessage(null);
-    setGrammarError(null);
-    setIsAnalyzing(true);
-    setExtractedContent(null);
-    try {
-      /*
-       * Keep existing analysis for:
-       * SEO
-       * Readability
-       * Content Quality
-       * Existing UI
-       */
+    let seoResult: SeoResponse | null = null;
 
-      // Extract actual website content using FastAPI.
-      const extractionResult = await extractWebsite(url);
+    if (seoOutcome.status === "fulfilled") {
+      seoResult = seoOutcome.value;
 
-      if (!extractionResult.main_text.trim()) {
-        throw new Error(
-          "No readable website content could be extracted.",
-        );
-      }
+      console.log("SEO analysis successful:", seoResult);
+    } else {
+      console.error("SEO analysis failed:", seoOutcome.reason);
+    }
 
-      setExtractedContent(extractionResult);
+    /*
+     * STEP 4: Process Grammar.
+     *
+     * Preserve your friend's existing implementation.
+     */
 
-      console.log(
-        "FastAPI Website Extraction successful:",
-        {
-          title: extractionResult.title,
-          wordCount: extractionResult.word_count,
-          characterCount: extractionResult.character_count,
-        },
-      );
+    let grammarResult: GrammarAnalysis | null = null;
 
-
-      const demoResult =
-        buildDemoAnalysisResult(url);
-
-      /*
-       * Get REAL grammar analysis.
-       */
-      const grammarResult =
-        await getGrammarAnalysis(url);
+    if (grammarOutcome.status === "fulfilled") {
+      grammarResult = grammarOutcome.value;
 
       if (!grammarResult) {
         setGrammarError(
-          "Real grammar analysis could not be completed. Check the Grammar API and LanguageTool.",
+          "Grammar analysis is currently unavailable.",
+        );
+      }
+    } else {
+      console.error(
+        "Grammar analysis failed:",
+        grammarOutcome.reason,
+      );
+
+      setGrammarError(
+        "Grammar analysis is currently unavailable. Check LanguageTool configuration.",
+      );
+    }
+
+    /*
+     * STEP 5: Readability and Content Analysis.
+     *
+     * Both require successfully extracted website text.
+     */
+
+    let readabilityResult: ReadabilityResponse | null = null;
+    let contentResult: ContentAnalysisResponse | null = null;
+
+    if (extractionResult) {
+      const [readabilityOutcome, contentOutcome] =
+        await Promise.allSettled([
+          analyzeReadability(extractionResult.main_text),
+
+          analyzeContent(
+            extractionResult.main_text,
+            extractionResult.title,
+            extractionResult.description,
+          ),
+        ]);
+
+      if (readabilityOutcome.status === "fulfilled") {
+        readabilityResult = readabilityOutcome.value;
+
+        console.log(
+          "Readability analysis successful:",
+          readabilityResult,
+        );
+      } else {
+        console.error(
+          "Readability analysis failed:",
+          readabilityOutcome.reason,
         );
       }
 
-      /*
-       * Combine existing analysis with
-       * the REAL grammar result.
-       */
-      const finalResult: AnalysisResult = {
-        ...demoResult,
-        grammar:
-          grammarResult ?? undefined,
-      };
+      if (contentOutcome.status === "fulfilled") {
+        contentResult = contentOutcome.value;
 
-      setResult(finalResult);
-
-      setActiveCategory("grammar");
-
-      setState("results");
-    } catch (error) {
-      console.error(
-        "Website analysis failed:",
-        error,
-      );
-
-      const fallbackResult =
-        buildDemoAnalysisResult(url);
-
-      setResult({
-        ...fallbackResult,
-        grammar: undefined,
-      });
-
-      setGrammarError(
-        "Grammar analysis failed. Please check the Grammar API.",
-      );
-
-      setActiveCategory(
-        ANALYSIS_CATEGORIES[0].id,
-      );
-
-      setState("results");
-    } finally {
-      setIsAnalyzing(false);
+        console.log(
+          "Content analysis successful:",
+          contentResult,
+        );
+      } else {
+        console.error(
+          "Content analysis failed:",
+          contentOutcome.reason,
+        );
+      }
     }
-  };
 
+    /*
+     * STEP 6: Convert actual API responses into findings.
+     */
+
+    const findings = mapAnalysisFindings({
+      seo: seoResult,
+      readability: readabilityResult,
+      contentAnalysis: contentResult,
+      grammar: grammarResult,
+    }).map((finding) => ({
+      ...finding,
+      sourceExcerpt:
+        finding.sourceExcerpt ??
+        (finding.severity !== "positive" && extractionResult?.main_text.trim()
+          ? extractionResult.main_text
+          : undefined),
+    }));
+
+    /*
+     * STEP 7: Build the real analysis result.
+     *
+     * No demo scores or fabricated findings.
+     */
+
+    const finalResult: AnalysisResult = {
+      isDemo: false,
+      url,
+      generatedAt: new Date().toISOString(),
+
+      extraction: extractionResult ?? undefined,
+      seo: seoResult ?? undefined,
+      readability: readabilityResult ?? undefined,
+      contentAnalysis: contentResult ?? undefined,
+      grammar: grammarResult ?? undefined,
+
+      findings,
+    };
+
+    setResult(finalResult);
+
+    setActiveCategory(ANALYSIS_CATEGORIES[0].id);
+    setState("results");
+
+    console.log("Verbly AI analysis completed:", {
+      extraction: !!extractionResult,
+      seo: !!seoResult,
+      readability: !!readabilityResult,
+      contentAnalysis: !!contentResult,
+      grammar: !!grammarResult,
+      findings: findings.length,
+    });
+
+  } catch (error) {
+    console.error("Website analysis failed:", error);
+
+    setLoginMessage(
+      error instanceof Error
+        ? error.message
+        : "An unexpected error occurred during analysis.",
+    );
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
   /*
    * RESET
    */
@@ -524,7 +672,6 @@ export default function DashboardPage() {
     setLoginMessage(null);
 
     setGrammarError(null);
-    setExtractedContent(null);
   };
 
   /*
@@ -769,6 +916,7 @@ export default function DashboardPage() {
                   result={result}
                   activeCategory={activeCategory}
                   onCategoryChange={setActiveCategory}
+                  onGenerateSuggestions={handleGenerateSuggestions}
                 />
 
                 <ConfusionHeatmap
