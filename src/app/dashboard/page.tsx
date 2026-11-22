@@ -23,6 +23,11 @@ import type {
   GrammarAnalysis,
 } from "@/lib/analysis/types";
 
+import {
+  extractWebsite,
+  type ExtractionResponse,
+} from "@/services/backend/extractionService";
+
 type DashboardState = "idle" | "results";
 
 type ResultSectionId =
@@ -250,6 +255,9 @@ export default function DashboardPage() {
   const [result, setResult] =
     useState<AnalysisResult | null>(null);
 
+  const [extractedContent, setExtractedContent] =
+    useState<ExtractionResponse | null>(null);  
+
   /*
    * URL used by the main Website Analyzer.
    * This same URL is passed to LocationIntelligence.
@@ -400,7 +408,7 @@ export default function DashboardPage() {
     setLoginMessage(null);
     setGrammarError(null);
     setIsAnalyzing(true);
-
+    setExtractedContent(null);
     try {
       /*
        * Keep existing analysis for:
@@ -409,6 +417,28 @@ export default function DashboardPage() {
        * Content Quality
        * Existing UI
        */
+
+      // Extract actual website content using FastAPI.
+      const extractionResult = await extractWebsite(url);
+
+      if (!extractionResult.main_text.trim()) {
+        throw new Error(
+          "No readable website content could be extracted.",
+        );
+      }
+
+      setExtractedContent(extractionResult);
+
+      console.log(
+        "FastAPI Website Extraction successful:",
+        {
+          title: extractionResult.title,
+          wordCount: extractionResult.word_count,
+          characterCount: extractionResult.character_count,
+        },
+      );
+
+
       const demoResult =
         buildDemoAnalysisResult(url);
 
@@ -494,6 +524,7 @@ export default function DashboardPage() {
     setLoginMessage(null);
 
     setGrammarError(null);
+    setExtractedContent(null);
   };
 
   /*
